@@ -1,6 +1,6 @@
 # Neural Networks Zero to One
 
-A reproduction of the excellent work of [Andrey Karpathy](https://karpathy.ai) and his [Neural Networks Zero to Hero](https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ) Youtube series.
+A reproduction of the excellent work of [Andrej Karpathy](https://karpathy.ai) and his [Neural Networks Zero to Hero](https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ) Youtube series.
 
 This repository is a learning exercise that serves two purposes:
 
