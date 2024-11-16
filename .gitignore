@@ -7,3 +7,6 @@
 *.lock
 # cache files
 **/__pycache__
+
+# text and data files
+**/*.txt
