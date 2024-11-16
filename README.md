@@ -13,6 +13,14 @@ The code here will be developed in three phases:
 2. Conversion of the python based components to [Mojo](https://www.modular.com/mojo) code for interop with `MAX`.
 3. Containerization of the transformer model for deployment as a self-hosted application.
 
+## Environment Setup
+
+Setup for this development environment requires the [magic](https://docs.modular.com/magic/) package manager.
+
+```bash
+magic add --manifest-path mojoproject.toml
+```
+
 ## Data
 
 The input data for `makemore` can be obtained via:
