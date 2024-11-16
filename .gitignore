@@ -1,0 +1,9 @@
+# pixi environments
+.pixi
+*.egg-info
+# magic environments
+.magic
+# lock files - sytem specific
+*.lock
+# cache files
+**/__pycache__
