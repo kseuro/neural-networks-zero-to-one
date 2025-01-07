@@ -28,3 +28,10 @@ The input data for `makemore` can be obtained via:
 ```bash
 wget https://raw.githubusercontent.com/karpathy/makemore/refs/heads/master/names.txt
 ```
+
+## Development Plan
+
+[ ] Complete the neural networks Youtube series as a collection of Jupyter notebooks.
+[ ] Re-implement logic from notebooks as a small Python module.
+[ ] Re-implement Python code in Mojo.
+[ ] Create a local model deployment using MAX engine.
