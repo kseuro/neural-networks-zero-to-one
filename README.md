@@ -23,6 +23,12 @@ The input data for `makemore` can be obtained via:
 wget https://raw.githubusercontent.com/karpathy/makemore/refs/heads/master/names.txt
 ```
 
+The input data for `nanoGPT` can be obtained via:
+
+```bash
+wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
+```
+
 ## Development Plan
 
 1. Complete the neural networks Youtube series as a collection of Jupyter notebooks.  
