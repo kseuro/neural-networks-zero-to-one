@@ -1,7 +1,7 @@
 [project]
 authors = ["kseuro <kai.w.stewart@gmail.com>"]
 channels = ["pytorch", "conda-forge", "https://conda.modular.com/max"]
-description = "Add a short description here"
+description = "A learning exercise in applying MAX to neural networks written in PyTorch."
 name = "neural-networks-zero-to-one"
 platforms = ["osx-arm64"]
 version = "0.1.0"
