@@ -42,8 +42,13 @@ class BatchNorm1d:
 
     def __call__(self, x: "torch.tensor") -> "torch.tensor":
         if self.training:
-            x_mean = x.mean(0, keepdim=True)
-            x_var = x.var(0, keepdim=True)
+            if x.ndim == 2:
+                reduce_dim = 0
+            elif x.ndim == 3:
+                reduce_dim = (0, 1)
+
+            x_mean = x.mean(reduce_dim, keepdim=True)
+            x_var = x.var(reduce_dim, keepdim=True)
         else:
             x_mean = self.running_mean
             x_var = self.running_var
