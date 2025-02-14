@@ -59,13 +59,25 @@ class Head(nn.Module):
         return out
 
 
+class MultiHeadAttention(nn.Module):
+    """Multiple parallel attention heads."""
+
+    def __init__(self, num_heads: int, head_size: int):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+
+    def forward(self, x: "torch.tensor"):
+        stack = [h(x) for h in self.heads]
+        return torch.cat(stack, dim=-1)
+
+
 class BigramLanguageModel(nn.Module):
 
     def __init__(self, vocab_size: int):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.position_embedding_table = nn.Embedding(block_size, n_embed)
-        self.sa_head = Head(n_embed)
+        self.sa_heads = MultiHeadAttention(4, n_embed // 4)  # 4 heads of 8-dim self-attention
         self.lm_head = nn.Linear(n_embed, vocab_size)
 
     def forward(self, idx: "torch.tensor", targets=None):
@@ -74,7 +86,7 @@ class BigramLanguageModel(nn.Module):
         token_embedding = self.token_embedding_table(idx)
         position_embedding = self.position_embedding_table(torch.arange(T, device=DEVICE))
         x = token_embedding + position_embedding  # skip connection
-        x = self.sa_head(x)  # one self-attention application
+        x = self.sa_heads(x)
         logits = self.lm_head(x)  # (B, T, vocab_size)
 
         if targets is None:
@@ -165,7 +177,7 @@ def main():
         loss.backward()
         optimizer.step()
 
-        if steps % 100 == 0:
+        if steps % 100 == 0 and print_losses:
             loss_estim = estimate_loss()
             losses[steps] = loss_estim
 
