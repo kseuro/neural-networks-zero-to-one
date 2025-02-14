@@ -31,7 +31,7 @@ class BigramLanguageModel(nn.Module):
             loss = None
         else:
             B, T, C = logits.shape
-            logits = logits.view(B * T, C)  # cross entropy expects a (B, C, d...)
+            logits = logits.view(B * T, C)
             targets = targets.view(B * T)
             loss = F.cross_entropy(logits, targets)
 
@@ -91,11 +91,7 @@ def main():
         y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])  # noqa
         return x, y
 
-    xb, yb = get_batch("train")
     model = BigramLanguageModel(vocab_size)
-    logits, loss = model(idx=xb, targets=yb)
-
-    # torch optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
     for steps in tqdm(range(n_steps)):
