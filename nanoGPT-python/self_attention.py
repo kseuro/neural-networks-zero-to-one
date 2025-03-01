@@ -65,10 +65,42 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads: int, head_size: int):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.proj = nn.Linear(n_embed, n_embed)
 
     def forward(self, x: "torch.tensor"):
-        stack = [h(x) for h in self.heads]
-        return torch.cat(stack, dim=-1)
+        stack = torch.cat([h(x) for h in self.heads], dim=-1)
+        proj = self.proj(stack)
+        return proj
+
+
+class FeedForward(nn.Module):
+
+    def __init__(self, n_embed: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embed, 4 * n_embed),
+            nn.ReLU(),
+            nn.Linear(4 * n_embed, n_embed),
+        )
+
+    def forward(self, x: "torch.tensor"):
+        return self.net(x)
+
+
+class Block(nn.Module):
+
+    def __init__(self, n_embed: int, num_heads: int):
+        super().__init__()
+        head_size = n_embed // num_heads
+        self.sa = MultiHeadAttention(num_heads, head_size)
+        self.ffwd = FeedForward(n_embed)
+        self.layer_norm1 = nn.LayerNorm(n_embed)
+        self.layer_norm2 = nn.LayerNorm(n_embed)
+
+    def forward(self, x: "torch.tensor"):
+        x = x + self.sa(self.layer_norm1(x))
+        x = x + self.ffwd(self.layer_norm2(x))
+        return x
 
 
 class BigramLanguageModel(nn.Module):
@@ -77,7 +109,12 @@ class BigramLanguageModel(nn.Module):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.position_embedding_table = nn.Embedding(block_size, n_embed)
-        self.sa_heads = MultiHeadAttention(4, n_embed // 4)  # 4 heads of 8-dim self-attention
+        self.blocks = nn.Sequential(
+            Block(n_embed, num_heads=4),
+            Block(n_embed, num_heads=4),
+            Block(n_embed, num_heads=4),
+            nn.LayerNorm(n_embed),
+        )
         self.lm_head = nn.Linear(n_embed, vocab_size)
 
     def forward(self, idx: "torch.tensor", targets=None):
@@ -86,7 +123,7 @@ class BigramLanguageModel(nn.Module):
         token_embedding = self.token_embedding_table(idx)
         position_embedding = self.position_embedding_table(torch.arange(T, device=DEVICE))
         x = token_embedding + position_embedding  # skip connection
-        x = self.sa_heads(x)
+        x = self.blocks(x)
         logits = self.lm_head(x)  # (B, T, vocab_size)
 
         if targets is None:
