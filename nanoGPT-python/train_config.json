@@ -1,0 +1,15 @@
+{
+    "max_iters": 5,
+    "batch_size": 64,
+    "block_size": 256,
+    "max_new_tokens": 300,
+    "eval_interval": 500,
+    "eval_iters": 200,
+    "learning_rate": 3e-4,
+    "n_embed": 384,
+    "num_heads": 6,
+    "n_layers": 6,
+    "dropout": 0.2,
+    "print_losses": false,
+    "model_checkpoint_name": "model_checkpoint.pt"
+}
