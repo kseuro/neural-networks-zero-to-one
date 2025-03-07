@@ -10,5 +10,5 @@
 
 # text and data files
 **/*.txt
-
+**/*.pt
 soccer
