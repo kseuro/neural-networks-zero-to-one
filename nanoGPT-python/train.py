@@ -74,6 +74,8 @@ def main():
     with open(filepath, "r") as infile:
         config = json.load(infile)
 
+    torch.manual_seed(config["seed"])
+
     model = SelfAttentionModel(vocab_size)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
