@@ -3,11 +3,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from tqdm import tqdm
-from pathlib import Path
 
-# params
-max_iters = 5
 batch_size = 64  # how many independent sequences to process in parallel
 block_size = 256  # what is the maximum context length for predictions
 max_new_tokens = 300  # how many tokens to generate when sampling from the model
@@ -19,14 +15,7 @@ num_heads = 6
 n_layers = 6
 dropout = 0.2
 
-model_checkpoint_path = Path().absolute() / "model_checkpoints"
-if not model_checkpoint_path.exists():
-    model_checkpoint_path.mkdir()
-
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-print_losses = False
-torch.manual_seed(1337)
 
 
 class Head(nn.Module):
@@ -116,7 +105,7 @@ class Block(nn.Module):
         return x
 
 
-class BigramLanguageModel(nn.Module):
+class SelfAttentionModel(nn.Module):
 
     def __init__(self, vocab_size: int):
         super().__init__()
@@ -160,91 +149,3 @@ class BigramLanguageModel(nn.Module):
             # append sampled index to running sequence to get auto-regressive decoding
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
-
-
-def main():
-    # Read in data, inspect and convert to mapping
-
-    filepath = Path(__file__).absolute().parent / "input.txt"
-    with open(filepath, "r") as infile:
-        text = infile.read()
-
-    chars = sorted(list(set(text)))
-    vocab_size = len(chars)
-
-    STOI = {character: integer for integer, character in enumerate(chars)}
-    ITOS = {integer: character for integer, character in enumerate(chars)}
-
-    def encode(input_: str) -> "list[int]":
-        return [STOI[char] for char in input_]
-
-    def decode(input_: "list[int]") -> str:
-        return "".join([ITOS[integer] for integer in input_])
-
-    data = torch.tensor(encode(text), dtype=torch.long)
-
-    # Convert the data into a train/test split
-    n = int(0.9 * len(data))
-    train_data = data[:n]
-    test_data = data[n:]
-
-    def get_batch(split: str):
-        """Generate a mini-batch of training data."""
-        if split not in ["train", "test"]:
-            raise ValueError("`split` must be one of `train` or `test`.")
-
-        data = train_data if split == "train" else test_data
-        ix = torch.randint(len(data) - block_size, (batch_size,))
-        x = torch.stack([data[i : i + block_size] for i in ix])  # noqa
-        y = torch.stack([data[i + 1 : i + block_size + 1] for i in ix])  # noqa
-        return x, y
-
-    model = BigramLanguageModel(vocab_size)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-
-    @torch.no_grad()
-    def estimate_loss():
-        out = {}
-        model.eval()
-        for split in ["train", "test"]:
-            losses = torch.zeros(eval_iters)
-            for k in range(eval_iters):
-                X, Y = get_batch(split)
-                logits, loss = model(X, Y)
-                losses[k] = loss.item()
-            out[split] = losses.mean()
-        model.train()
-        return out
-
-    losses = {}
-    for steps in tqdm(range(max_iters)):
-        xb, yb = get_batch("train")
-        logits, loss = model(idx=xb, targets=yb)
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
-
-        if steps % 100 == 0 and print_losses:
-            loss_estim = estimate_loss()
-            losses[steps] = loss_estim
-
-    def print_sample(self_attention_model, max_new_tokens: int = 100):
-        idx = torch.zeros((1, 1), dtype=torch.long)
-        print(decode(self_attention_model.generate(idx, max_new_tokens=max_new_tokens)[0].tolist()))
-
-    print_sample(model, max_new_tokens=max_new_tokens)
-
-    if print_losses:
-        for loss_estim in losses.values():
-            print(f"Training loss: {loss_estim['train']}, Test loss: {loss_estim['test']}")
-
-    checkpoint = {
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-    }
-    outfile = model_checkpoint_path / "model_checkpoint.pt"
-    torch.save(checkpoint, outfile)
-
-
-if __name__ == "__main__":
-    main()
