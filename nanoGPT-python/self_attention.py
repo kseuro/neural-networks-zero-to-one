@@ -7,13 +7,22 @@ from tqdm import tqdm
 from pathlib import Path
 
 # params
-batch_size = 32  # how many independent sequences to process in parallel
-block_size = 8  # what is the maximum context length for predictions
-max_iters = 5000
+max_iters = 5
+batch_size = 64  # how many independent sequences to process in parallel
+block_size = 256  # what is the maximum context length for predictions
+max_new_tokens = 300  # how many tokens to generate when sampling from the model
 eval_interval = 500
+learning_rate = 3e-4
 eval_iters = 200
-learning_rate = 1e-3
-n_embed = 32
+n_embed = 384
+num_heads = 6
+n_layers = 6
+dropout = 0.2
+
+model_checkpoint_path = Path().absolute() / "model_checkpoints"
+if not model_checkpoint_path.exists():
+    model_checkpoint_path.mkdir()
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 print_losses = False
@@ -29,6 +38,7 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embed, head_size, bias=False)
         self.value = nn.Linear(n_embed, head_size, bias=False)
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         """
@@ -53,6 +63,7 @@ class Head(nn.Module):
         # Aggregation is a data-dependent average of the keys and queries
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
         wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
 
         v = self.value(x)  # (B, T, C)
         out = wei @ v  # (B, T, T) @ (B, T, C) -> (B, T, C)
@@ -66,10 +77,11 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embed, n_embed)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x: "torch.tensor"):
         stack = torch.cat([h(x) for h in self.heads], dim=-1)
-        proj = self.proj(stack)
+        proj = self.dropout(self.proj(stack))
         return proj
 
 
@@ -81,6 +93,7 @@ class FeedForward(nn.Module):
             nn.Linear(n_embed, 4 * n_embed),
             nn.ReLU(),
             nn.Linear(4 * n_embed, n_embed),
+            nn.Dropout(dropout),
         )
 
     def forward(self, x: "torch.tensor"):
@@ -109,12 +122,8 @@ class BigramLanguageModel(nn.Module):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.position_embedding_table = nn.Embedding(block_size, n_embed)
-        self.blocks = nn.Sequential(
-            Block(n_embed, num_heads=4),
-            Block(n_embed, num_heads=4),
-            Block(n_embed, num_heads=4),
-            nn.LayerNorm(n_embed),
-        )
+        self.blocks = nn.Sequential(*[Block(n_embed, num_heads=num_heads) for _ in range(n_layers)])
+        self.layernorm_final = nn.LayerNorm(n_embed)
         self.lm_head = nn.Linear(n_embed, vocab_size)
 
     def forward(self, idx: "torch.tensor", targets=None):
@@ -123,7 +132,8 @@ class BigramLanguageModel(nn.Module):
         token_embedding = self.token_embedding_table(idx)
         position_embedding = self.position_embedding_table(torch.arange(T, device=DEVICE))
         x = token_embedding + position_embedding  # skip connection
-        x = self.blocks(x)
+        x = self.blocks(x)  # (B, T, C)
+        x = self.layernorm_final(x)  # (B, T, C)
         logits = self.lm_head(x)  # (B, T, vocab_size)
 
         if targets is None:
@@ -218,15 +228,22 @@ def main():
             loss_estim = estimate_loss()
             losses[steps] = loss_estim
 
-    def print_sample(bigram_model, max_new_tokens: int = 100):
+    def print_sample(self_attention_model, max_new_tokens: int = 100):
         idx = torch.zeros((1, 1), dtype=torch.long)
-        print(decode(bigram_model.generate(idx, max_new_tokens=max_new_tokens)[0].tolist()))
+        print(decode(self_attention_model.generate(idx, max_new_tokens=max_new_tokens)[0].tolist()))
 
-    print_sample(model, max_new_tokens=300)
+    print_sample(model, max_new_tokens=max_new_tokens)
 
     if print_losses:
         for loss_estim in losses.values():
             print(f"Training loss: {loss_estim['train']}, Test loss: {loss_estim['test']}")
+
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+    }
+    outfile = model_checkpoint_path / "model_checkpoint.pt"
+    torch.save(checkpoint, outfile)
 
 
 if __name__ == "__main__":
