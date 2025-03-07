@@ -11,5 +11,6 @@
     "n_layers": 6,
     "dropout": 0.2,
     "print_losses": false,
-    "model_checkpoint_name": "model_checkpoint.pt"
+    "model_checkpoint_name": "model_checkpoint.pt",
+    "seed": 1337
 }
